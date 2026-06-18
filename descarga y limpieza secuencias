@@ -1,0 +1,27 @@
+======================================================================
+  Esto se va a utilizar como proceso de check para no perder pasos.
+======================================================================
+
+#Descarga de archivos del proyecto de metagenomica de suelo PRJNA385596 del siguiente enlace: https://www.ebi.ac.uk/ena/browser/view/PRJNA385596
+
+#Preparación de entorno y muestras
+
+  conda create -n tfm_metagenomica - c conda-forge -bioconda fastqc multiqc fastp
+  conda activate tfm_metagenomica
+mkdir -p TFM_metagenomica/data/{raw_fastq,trimmed_fastq} TFM_metagenomica/results/{fastqc_raw,fastqc_trimmed,multiqc_raw,multiqc_trimmed,fastp} TFM_metagenomica/{metadata,scripts}
+
+#descargué los archivos de la web y los moví de descargas a la carpeta creada.
+  cp ~/Downloads/SRR5626781_1.fastq ~/Downloads/SRR5626781_2.fastq ~/Downloads/SRR5626785_1.fastq ~/Downloads/SRR5626785_2.fastq data/raw_fastq/
+
+# Una vez los archivos estan listos en el directorio, pasamos el  control de calidad
+
+  fastqc data/raw_fastq/*.fastq -o results/fastqc_raw
+
+  multiqc results/fastqc_raw -o results/multiqc_raw
+
+# Se revisa el informe de resultados y se mejora la calidad de la muestra.
+pedrogsaez$ fastp -i data/raw_fastq/SRR5626781_1.fastq -I data/raw_fastq/SRR5626781_2.fastq -o data/trimmed_fastq/SRR5626781_1.trimmed.fastq.gz -O data/trimmed_fastq/SRR5626781_2.trimmed.fastq.gz --detect_adapter_for_pe --cut_front --cut_tail --cut_window_size 4 --cut_mean_quality 20 --qualified_quality_phred 20 --length_required 50 --thread 4 --html results/fastp/SRR5626781_fastp.html --json results/fastp/SRR5626781_fastp.json
+
+pedrogsaez$ fastp -i data/raw_fastq/SRR5626785_1.fastq -I data/raw_fastq/SRR5626785_2.fastq -o data/trimmed_fastq/SRR5626785_1.trimmed.fastq.gz -O data/trimmed_fastq/SRR5626785_2.trimmed.fastq.gz --detect_adapter_for_pe --cut_front --cut_tail --cut_window_size 4 --cut_mean_quality 20 --qualified_quality_phred 20 --length_required 50 --thread 4 --html results/fastp/SRR5626785_fastp.html --json results/fastp/SRR5626785_fastp.json
+
+tras la mejora de muestra se vuelve a pasar el control de calidad FASTQC y Multiqc
