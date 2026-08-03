@@ -25,3 +25,84 @@ pedrogsaez$ fastp -i data/raw_fastq/SRR5626781_1.fastq -I data/raw_fastq/SRR5626
 pedrogsaez$ fastp -i data/raw_fastq/SRR5626785_1.fastq -I data/raw_fastq/SRR5626785_2.fastq -o data/trimmed_fastq/SRR5626785_1.trimmed.fastq.gz -O data/trimmed_fastq/SRR5626785_2.trimmed.fastq.gz --detect_adapter_for_pe --cut_front --cut_tail --cut_window_size 4 --cut_mean_quality 20 --qualified_quality_phred 20 --length_required 50 --thread 4 --html results/fastp/SRR5626785_fastp.html --json results/fastp/SRR5626785_fastp.json
 
 tras la mejora de muestra se vuelve a pasar el control de calidad FASTQC y Multiqc
+(tfm_metagenomica) MacBook-Pro-de-Pedro:TFM_metagenomica pedrogsaez$ multiqc results/fastqc_trimmed results/fastp -o results/multiqc_trimmed -f
+
+/// MultiQC 🔍 v1.35
+
+       file_search | Search path: /Users/pedrogsaez/Documents/Master_Bioinformatica/TFM/TFM_metagenomica/results/fastqc_trimmed
+       file_search | Search path: /Users/pedrogsaez/Documents/Master_Bioinformatica/TFM/TFM_metagenomica/results/fastp
+         searching | ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 12/12  
+             fastp | Found 2 reports
+            fastqc | Found 4 reports
+     write_results | Data        : results/multiqc_trimmed/multiqc_data
+     write_results | Report      : results/multiqc_trimmed/multiqc_report.html
+           multiqc | MultiQC complete
+(tfm_metagenomica) MacBook-Pro-de-Pedro:TFM_metagenomica pedrogsaez$ open results/multiqc_trimmed/multiqc_report.html
+
+Tras ver que con dos muestras todo va bien vamos con el grueso:
+-------------------------------------
+#### REALIZACIÓN COMPLETA ########
+-------------------------------------
+(tfm_metagenomica) MacBook-Pro-de-Pedro:TFM_metagenomica pedrogsaez$ cp ~/Downloads/filereport_read_run_PRJNA385596-2.tsv \
+> metadata/PRJNA385596_ENA_runs.tsv
+(tfm_metagenomica) MacBook-Pro-de-Pedro:TFM_metagenomica pedrogsaez$ wc -l metadata/PRJNA385596_ENA_runs.tsv
+      25 metadata/PRJNA385596_ENA_runs.tsv
+(tfm_metagenomica) MacBook-Pro-de-Pedro:TFM_metagenomica pedrogsaez$ python - <<'PY'
+> import csv
+> 
+> archivo = "metadata/PRJNA385596_ENA_runs.tsv"
+> 
+> with open(archivo, newline="", encoding="utf-8") as f:
+>     lector = csv.DictReader(f, delimiter="\t")
+>     filas = list(lector)
+> 
+> print("COLUMNAS:")
+> for columna in lector.fieldnames:
+>     print("-", columna)
+> 
+> print(f"\nNÚMERO DE RUNS: {len(filas)}")
+> 
+> print("\nPRIMERAS CINCO MUESTRAS:")
+> for fila in filas[:5]:
+>     print(
+>         fila.get("run_accession"),
+>         "|", fila.get("sample_alias"),
+>         "|", fila.get("library_layout"),
+>         "|", fila.get("fastq_ftp")
+>     )
+> PY
+COLUMNAS:
+- run_accession
+- study_accession
+- sample_accession
+- secondary_sample_accession
+- experiment_accession
+- tax_id
+- scientific_name
+- instrument_platform
+- instrument_model
+- library_layout
+- library_strategy
+- library_source
+- library_selection
+- read_count
+- base_count
+- center_name
+- first_public
+- last_updated
+- experiment_title
+- study_title
+- fastq_bytes
+- fastq_md5
+- fastq_ftp
+- sample_alias
+- sample_title
+
+NÚMERO DE RUNS: 24
+
+PRIMERAS CINCO MUESTRAS:
+SRR5626779 | HRO_spring_compost_10 | PAIRED | ftp.sra.ebi.ac.uk/vol1/fastq/SRR562/009/SRR5626779/SRR5626779_1.fastq.gz;ftp.sra.ebi.ac.uk/vol1/fastq/SRR562/009/SRR5626779/SRR5626779_2.fastq.gz
+SRR5626780 | HRO_spring_no_compost_9 | PAIRED | ftp.sra.ebi.ac.uk/vol1/fastq/SRR562/000/SRR5626780/SRR5626780_1.fastq.gz;ftp.sra.ebi.ac.uk/vol1/fastq/SRR562/000/SRR5626780/SRR5626780_2.fastq.gz
+SRR5626787 | HRO_autumn_no_compost_8 | PAIRED | ftp.sra.ebi.ac.uk/vol1/fastq/SRR562/007/SRR5626787/SRR5626787_1.fastq.gz;ftp.sra.ebi.ac.uk/vol1/fastq/SRR562/007/SRR5626787/SRR5626787_2.fastq.gz
+SRR5626788 | HRO_autumn_no_compost_7 | PAIRED | ftp.sra.ebi.ac.uk/vol1/fastq/SRR562/008/SRR5626788/SRR5626788_1.fastq.gz;ftp.sra.ebi.ac.uk/vol1/fastq/SRR562/008/SRR5626788/SRR5626788_2.fastq.gz
+SRR5626792 | FS_autumn_no_compost_1 | PAIRED | ftp.sra.ebi.ac.uk/vol1/fastq/SRR562/002/SRR5626792/SRR5626792_1.fastq.gz;ftp.sra.ebi.ac.uk/vol1/fastq/SRR562/002/SRR5626792/SRR5626792_2.fastq.gz
