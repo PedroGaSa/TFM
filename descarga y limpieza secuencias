@@ -106,3 +106,175 @@ SRR5626780 | HRO_spring_no_compost_9 | PAIRED | ftp.sra.ebi.ac.uk/vol1/fastq/SRR
 SRR5626787 | HRO_autumn_no_compost_8 | PAIRED | ftp.sra.ebi.ac.uk/vol1/fastq/SRR562/007/SRR5626787/SRR5626787_1.fastq.gz;ftp.sra.ebi.ac.uk/vol1/fastq/SRR562/007/SRR5626787/SRR5626787_2.fastq.gz
 SRR5626788 | HRO_autumn_no_compost_7 | PAIRED | ftp.sra.ebi.ac.uk/vol1/fastq/SRR562/008/SRR5626788/SRR5626788_1.fastq.gz;ftp.sra.ebi.ac.uk/vol1/fastq/SRR562/008/SRR5626788/SRR5626788_2.fastq.gz
 SRR5626792 | FS_autumn_no_compost_1 | PAIRED | ftp.sra.ebi.ac.uk/vol1/fastq/SRR562/002/SRR5626792/SRR5626792_1.fastq.gz;ftp.sra.ebi.ac.uk/vol1/fastq/SRR562/002/SRR5626792/SRR5626792_2.fastq.gz
+
+-----------------------------------------------
+#Tras comprimir los 4 archivos de prueba pasamos a realizar la descarga del resto de archivos con el siguiente script:
+-----------------------------------------------
+cat > scripts/download_PRJNA385596.py <<'PY'
+#!/usr/bin/env python3
+
+import csv
+import hashlib
+import subprocess
+import sys
+from pathlib import Path
+
+TSV = Path("metadata/PRJNA385596_ENA_runs.tsv")
+OUTDIR = Path("data/raw_fastq")
+
+# Estas dos muestras ya están descargadas, comprimidas y verificadas.
+RUNS_YA_DISPONIBLES = {
+    "SRR5626781",
+    "SRR5626785",
+}
+
+
+def calcular_md5(archivo: Path) -> str:
+    md5 = hashlib.md5()
+
+    with archivo.open("rb") as handle:
+        for bloque in iter(lambda: handle.read(1024 * 1024), b""):
+            md5.update(bloque)
+
+    return md5.hexdigest()
+
+
+if not TSV.exists():
+    sys.exit(f"ERROR: no se encuentra el archivo {TSV}")
+
+OUTDIR.mkdir(parents=True, exist_ok=True)
+
+with TSV.open(newline="", encoding="utf-8") as handle:
+    filas = list(csv.DictReader(handle, delimiter="\t"))
+
+print(f"Runs encontrados en el TSV: {len(filas)}", flush=True)
+
+for fila in filas:
+    run = fila.get("run_accession", "").strip()
+    layout = fila.get("library_layout", "").strip()
+
+    if run in RUNS_YA_DISPONIBLES:
+        print(f"OMITIDO, YA DISPONIBLE: {run}", flush=True)
+        continue
+
+    if layout != "PAIRED":
+        print(
+            f"ADVERTENCIA: {run} aparece como {layout}, no como PAIRED",
+            flush=True,
+        )
+
+    rutas_ftp = [
+        valor.strip()
+        for valor in fila.get("fastq_ftp", "").split(";")
+        if valor.strip()
+    ]
+
+    md5_esperados = [
+        valor.strip()
+        for valor in fila.get("fastq_md5", "").split(";")
+        if valor.strip()
+    ]
+
+    if len(rutas_ftp) != 2:
+        print(
+            f"ERROR: {run} contiene {len(rutas_ftp)} FASTQ; se esperaban 2",
+            file=sys.stderr,
+            flush=True,
+        )
+        continue
+
+    for indice, ruta_ftp in enumerate(rutas_ftp):
+        url = ruta_ftp
+
+        if not url.startswith(("https://", "http://", "ftp://")):
+            url = "https://" + url
+
+        destino = OUTDIR / Path(ruta_ftp).name
+        temporal = destino.with_suffix(destino.suffix + ".part")
+
+        md5_esperado = (
+            md5_esperados[indice]
+            if indice < len(md5_esperados)
+            else None
+        )
+
+        if destino.exists():
+            if md5_esperado:
+                print(f"VERIFICANDO ARCHIVO EXISTENTE: {destino.name}", flush=True)
+
+                if calcular_md5(destino) == md5_esperado:
+                    print(f"YA EXISTE Y ES CORRECTO: {destino.name}", flush=True)
+                    continue
+
+                print(
+                    f"MD5 INCORRECTO; SE DESCARGARÁ DE NUEVO: {destino.name}",
+                    flush=True,
+                )
+                destino.unlink()
+            else:
+                print(f"YA EXISTE, SE OMITE: {destino.name}", flush=True)
+                continue
+
+        print(f"DESCARGANDO: {destino.name}", flush=True)
+
+        comando = [
+            "curl",
+            "-L",
+            "--fail",
+            "--retry", "5",
+            "--retry-delay", "5",
+            "-C", "-",
+            "-o", str(temporal),
+            url,
+        ]
+
+        try:
+            subprocess.run(comando, check=True)
+        except subprocess.CalledProcessError as error:
+            sys.exit(f"ERROR descargando {destino.name}: {error}")
+
+        temporal.rename(destino)
+
+        if md5_esperado:
+            print(f"COMPROBANDO MD5: {destino.name}", flush=True)
+            md5_obtenido = calcular_md5(destino)
+
+            if md5_obtenido != md5_esperado:
+                destino.unlink()
+                sys.exit(
+                    f"ERROR: MD5 incorrecto para {destino.name}\n"
+                    f"Esperado: {md5_esperado}\n"
+                    f"Obtenido: {md5_obtenido}"
+                )
+
+        print(f"COMPLETADO: {destino.name}", flush=True)
+
+print("\nDESCARGA COMPLETADA", flush=True)
+PY
+
+## comprovamos que la descarga ha funcionado con los siguientes comandos
+find data/raw_fastq -maxdepth 1 -name "*.fastq.gz" | wc -l
+echo "R1:" $(find data/raw_fastq -maxdepth 1 -name "*_1.fastq.gz" | wc -l)
+echo "R2:" $(find data/raw_fastq -maxdepth 1 -name "*_2.fastq.gz" | wc -l)
+
+=========================
+# TODO CORRECTO #
+---------------------
+### FastQC
+=========================
+
+nohup caffeinate -i fastqc \
+  data/raw_fastq/*.fastq.gz \
+  -o results/fastqc_raw \
+  > results/fastqc_raw_all.log 2>&1 &
+
+# MultiQC
+
+multiqc results/fastqc_raw \
+  -o results/multiqc_raw \
+  -f
+
+=======================================================
+#### INFORME MULTIQC
+=======================================================
+open results/multiqc_raw/multiqc_report.html
