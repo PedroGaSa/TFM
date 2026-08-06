@@ -1,0 +1,208 @@
+### creación de tabla comparativa de muestras ###
+
+------------------
+# Este es un primer paso de comprobaciçon para ver que lo que había hecho estaba bien estructurado
+
+
+python - <<'PY'
+import pandas as pd
+
+archivo = "metadata/tabla_muestras_PRJNA385596.xlsx"
+
+excel = pd.ExcelFile(archivo)
+
+print("\nHOJAS DEL ARCHIVO:")
+for hoja in excel.sheet_names:
+    print(f"  - {hoja}")
+
+df = pd.read_excel(archivo, sheet_name=excel.sheet_names[0])
+
+print("\nNÚMERO DE FILAS:")
+print(len(df))
+
+print("\nCOLUMNAS:")
+for columna in df.columns:
+    print(f"  - {columna}")
+
+print("\nPRIMERAS 10 FILAS:")
+
+# CREACION DE TABLA
+
+
+python - <<'PY'
+from pathlib import Path
+import pandas as pd
+
+# Rutas del proyecto
+project_dir = Path.cwd()
+input_file = project_dir / "metadata" / "tabla_muestras_PRJNA385596.xlsx"
+output_file = project_dir / "metadata" / "sample_metadata.tsv"
+
+# Leer la hoja principal
+df = pd.read_excel(input_file, sheet_name="Tabla_TFM")
+
+# Renombrar columnas
+df = df.rename(columns={
+    "sample_accession": "biosample",
+    "sitio": "site",
+    "estacion": "season",
+    "tratamiento": "treatment",
+    "replica_grupo": "replicate",
+    "tipo_muestra": "sample_type",
+    "estrategia": "strategy",
+    "plataforma": "platform"
+})
+
+# Columnas necesarias
+required_columns = [
+    "run_accession",
+    "biosample",
+    "sample_alias",
+    "site",
+    "season",
+    "treatment",
+    "replicate",
+    "sample_type",
+    "strategy",
+    "layout",
+    "platform"
+]
+
+missing_columns = [
+    column for column in required_columns
+    if column not in df.columns
+]
+
+if missing_columns:
+    raise ValueError(
+        f"Faltan columnas obligatorias: {missing_columns}"
+    )
+
+# Seleccionar y ordenar columnas
+df = df[required_columns].copy()
+
+# Estandarizar valores
+df["run_accession"] = df["run_accession"].astype(str).str.strip()
+df["biosample"] = df["biosample"].astype(str).str.strip()
+df["sample_alias"] = df["sample_alias"].astype(str).str.strip()
+
+df["site"] = df["site"].astype(str).str.strip().str.upper()
+df["season"] = df["season"].astype(str).str.strip().str.lower()
+df["treatment"] = df["treatment"].astype(str).str.strip().str.lower()
+
+df["replicate"] = pd.to_numeric(
+    df["replicate"],
+    errors="raise"
+).astype(int)
+
+df["sample_type"] = df["sample_type"].astype(str).str.strip()
+df["strategy"] = df["strategy"].astype(str).str.strip().str.upper()
+df["layout"] = df["layout"].astype(str).str.strip().str.upper()
+df["platform"] = df["platform"].astype(str).str.strip()
+
+# Añadir rutas relativas de los FASTQ filtrados
+df["R1"] = df["run_accession"].apply(
+    lambda run: f"data/trimmed_fastq/{run}_1.trimmed.fastq.gz"
+)
+
+df["R2"] = df["run_accession"].apply(
+    lambda run: f"data/trimmed_fastq/{run}_2.trimmed.fastq.gz"
+)
+
+# Comprobaciones generales
+errors = []
+
+if len(df) != 24:
+    errors.append(f"Se esperaban 24 muestras, pero hay {len(df)}.")
+
+if df["run_accession"].nunique() != 24:
+    errors.append("Hay run_accession duplicados.")
+
+if df["biosample"].nunique() != 24:
+    errors.append("Hay BioSample duplicados.")
+
+if df.isna().any().any():
+    errors.append("La tabla contiene valores vacíos.")
+
+# Comprobar niveles experimentales
+expected_sites = {"FS", "HRO"}
+expected_seasons = {"spring", "autumn"}
+expected_treatments = {"compost", "no_compost"}
+expected_replicates = {1, 2, 3}
+
+if set(df["site"]) != expected_sites:
+    errors.append(
+        f"Sitios inesperados: {sorted(df['site'].unique())}"
+    )
+
+if set(df["season"]) != expected_seasons:
+    errors.append(
+        f"Estaciones inesperadas: {sorted(df['season'].unique())}"
+    )
+
+if set(df["treatment"]) != expected_treatments:
+    errors.append(
+        f"Tratamientos inesperados: {sorted(df['treatment'].unique())}"
+    )
+
+if set(df["replicate"]) != expected_replicates:
+    errors.append(
+        f"Réplicas inesperadas: {sorted(df['replicate'].unique())}"
+    )
+
+# Comprobar diseño balanceado
+design = (
+    df.groupby(["site", "season", "treatment"])
+      .size()
+      .rename("n_samples")
+)
+
+if len(design) != 8 or not (design == 3).all():
+    errors.append(
+        "El diseño experimental no presenta "
+        "tres réplicas en las ocho combinaciones."
+    )
+
+# Comprobar que existen todos los FASTQ
+missing_fastq = []
+
+for column in ["R1", "R2"]:
+    for relative_path in df[column]:
+        full_path = project_dir / relative_path
+        if not full_path.is_file():
+            missing_fastq.append(relative_path)
+
+if missing_fastq:
+    errors.append(
+        "No se localizaron estos FASTQ:\n  - "
+        + "\n  - ".join(missing_fastq)
+    )
+
+# Detener si existe algún problema
+if errors:
+    print("\nSE ENCONTRARON PROBLEMAS:")
+    for error in errors:
+        print(f"\n- {error}")
+    raise SystemExit(1)
+
+# Guardar TSV
+df.to_csv(
+    output_file,
+    sep="\t",
+    index=False
+)
+
+print("\nTABLA DE METADATOS CREADA CORRECTAMENTE")
+print(f"Archivo: {output_file}")
+print(f"Muestras: {len(df)}")
+print(f"Run accession únicos: {df['run_accession'].nunique()}")
+print(f"FASTQ localizados: {len(df) * 2}")
+
+print("\nDISEÑO EXPERIMENTAL:")
+print(design.to_string())
+
+print("\nPRIMERAS CINCO FILAS:")
+print(df.head().to_string(index=False))
+PY
+print(df.head(10).to_string(index=False))
+PY
