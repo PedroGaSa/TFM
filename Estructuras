@@ -1,0 +1,99 @@
+### ESTRUCTURA DE ARCHIVOS #####
+/Volumes/TOSHIBA EXT/TFM_metagenomica_storage/
+├── data/
+│   ├── raw_fastq/          48 archivos
+│   └── trimmed_fastq/      48 archivos
+├── databases/
+├── results/
+├── tmp/
+└── backups/
+    └── TFM_metagenomica_project/
+        ├── metadata/
+        ├── results/
+        └── scripts/
+
+=============================================================
+### FLUJO DE TRABAJO #####
+=============================================================
+┌─────────────────────────────────────────────┐
+│ 1. Selección del estudio público            │
+│    PRJNA385596                              │
+│    24 metagenomas de suelo agrícola         │
+└──────────────────────┬──────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────┐
+│ 2. Organización del proyecto                │
+│    Carpetas, scripts y metadatos            │
+│    Diseño 2 × 2 × 2 × 3                     │
+└──────────────────────┬──────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────┐
+│ 3. Descarga de lecturas                     │
+│    24 muestras paired-end                   │
+│    48 archivos FASTQ crudos                 │
+└──────────────────────┬──────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────┐
+│ 4. Control de calidad inicial               │
+│    FastQC + MultiQC                         │
+└──────────────────────┬──────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────┐
+│ 5. Filtrado y recorte                       │
+│    fastp                                    │
+│    Calidad, adaptadores y longitud mínima   │
+└──────────────────────┬──────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────┐
+│ 6. Control de calidad post-filtrado         │
+│    FastQC + MultiQC                         │
+│    24 muestras aprobadas                    │
+└──────────────────────┬──────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────┐
+│ 7. Tabla definitiva de metadatos            │
+│    Sitio, estación, tratamiento, réplica    │
+│    y rutas de los FASTQ                     │
+└──────────────────────┬──────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────┐
+│ 8. Caracterización taxonómica               │
+│    Identificación y abundancia microbiana   │
+│    Kraken2/Bracken o MetaPhlAn              │
+└──────────────────────┬──────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────┐
+│ 9. Caracterización funcional                │
+│    Genes, enzimas y rutas metabólicas       │
+│    HUMAnN / eggNOG-mapper                   │
+└──────────────────────┬──────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────┐
+│ 10. Integración con metadatos               │
+│     Tablas taxonómicas y funcionales        │
+└──────────────────────┬──────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────┐
+│ 11. Análisis estadístico en R               │
+│     Diversidad alfa y beta                  │
+│     PERMANOVA                               │
+│     Abundancia diferencial                  │
+│     Compost vs no_compost                   │
+│     Efectos de sitio y estación             │
+└──────────────────────┬──────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────┐
+│ 12. Interpretación y presentación           │
+│     Figuras, tablas y discusión del TFM     │
+└─────────────────────────────────────────────┘
