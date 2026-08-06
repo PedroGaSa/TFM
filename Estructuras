@@ -97,3 +97,17 @@
 │ 12. Interpretación y presentación           │
 │     Figuras, tablas y discusión del TFM     │
 └─────────────────────────────────────────────┘
+
+====================================================
+
+Mac interno
+├── entorno Conda de MetaPhlAn
+├── scripts
+├── metadatos
+└── FASTQ filtrados, por ahora
+
+TOSHIBA EXT
+├── base de datos MetaPhlAn
+├── perfiles taxonómicos
+├── archivos de mapeo
+└── respaldo del proyecto
